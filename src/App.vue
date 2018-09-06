@@ -17,8 +17,7 @@ export default {
         "M9,0C4.029,0,0,4.029,0,9s4.029,9,9,9s9-4.029,9-9S13.971,0,9,0z M9,15.93 c-3.83,0-6.93-3.1-6.93-6.93S5.17,2.07,9,2.07s6.93,3.1,6.93,6.93S12.83,15.93,9,15.93 M12.5,9c0,1.933-1.567,3.5-3.5,3.5S5.5,10.933,5.5,9S7.067,5.5,9,5.5 S12.5,7.067,12.5,9z",
       line: [],
       point: [],
-      period: 0,
-      rpoint: {},
+      period: [],
       images: [
         {
           id: "taipei",
@@ -62,48 +61,63 @@ export default {
 
       for (let i = 0; i < ipLen; i++) {
         let api = `http://ip-api.com/json/${vm.ipdata[i].ip}`;
-
         vm.$http.get(api).then(response => {
+          
+          // 將線寫入line
           let objLine = {};
           (objLine["latitudes"] = [vm.originLat, response.data.lat]),
-            (objLine["longitudes"] = [vm.originLon, response.data.lon]);
+          (objLine["longitudes"] = [vm.originLon, response.data.lon]);
+          vm.line.push(objLine);
 
+          // 將點寫入point
           let objPoint = {};
           objPoint["svgPath"] = vm.targetSVG;
           objPoint["title"] = response.data.regionName;
           objPoint["latitude"] = response.data.lat;
           objPoint["longitude"] = response.data.lon;
-
-          if (i == 0) {
-            // console.log(i + ":" + vm.period);
-          } else {
-            var startse = new Date(
-              Date.parse(vm.ipdata[i - 1].time.replace(/-/g, "/"))
-            );
-            var endse = new Date(
-              Date.parse(vm.ipdata[i].time.replace(/-/g, "/"))
-            );
-            vm.period = endse - startse;
-            // console.log(i + ":" + vm.period);
-          }
-
-          this.delay(i, objLine, objPoint, vm.period);
+          vm.point.push(objPoint);
         });
+
+        // 將時差寫入period
+        let objSec = {}
+        if (i == 0) {
+            objSec["sec"] = 1000;
+            vm.period[0] = objSec;         
+        } else {
+          var startse = new Date(
+            Date.parse(vm.ipdata[i - 1].time.replace(/-/g, "/"))
+          );
+          var endse = new Date(
+            Date.parse(vm.ipdata[i].time.replace(/-/g, "/"))
+          );
+          
+          var sec = endse - startse; 
+          objSec["sec"] = sec; 
+          vm.period.push(objSec); 
+        }
       }
+
+      vm.insertData();
     },
-    delay(i, line, point, s) {
+    insertData() {
       const vm = this;
+      var dataLen = vm.period.length;
+      let differ = 0
+      for (let i = 0; i < dataLen; i++) {
+ 
+        differ += vm.period[i].sec;
+        console.log(vm.period[i].sec + "/" + differ);
+        setTimeout(function() {
+            // vm.images[0].lines[i] = vm.line[i];
+            // vm.images[i+1] =vm.point[i];
+            vm.images[0].lines.push(vm.line[i]);
+            vm.images.push(vm.point[i]);
+            console.log(i);
+            vm.showMap();
+        },differ);
+        
+      }
 
-      setTimeout(function() {
-        vm.line.push(line);
-        vm.point.push(point);
-
-        vm.images[0].lines = vm.line;
-        vm.images.push(point);
-
-        console.log("index:" + i + "/ ip:" + vm.ipdata[i].ip + "/ time:" + s);
-        vm.showMap();
-      }, s);
     },
     showMap() {
       const vm = this;
